@@ -306,12 +306,12 @@ main() {
     log "Launching Cursor with universal hardware optimizations..."
     
     if ! "$CURSOR_APP" \
-        $GPU_FLAGS \
+        "$GPU_FLAGS" \
         --no-sandbox \
         --disable-dev-shm-usage \
         --disable-features=VizDisplayCompositor \
         --js-flags="--max-old-space-size=$JS_MEMORY" \
-        $ADDITIONAL_FLAGS \
+        "$ADDITIONAL_FLAGS" \
         "$@"; then
         error "Failed to launch Cursor"
         exit 1

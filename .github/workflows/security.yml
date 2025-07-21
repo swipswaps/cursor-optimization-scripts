@@ -1,0 +1,75 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 2 * * 1'  # Weekly on Monday at 2 AM
+
+jobs:
+  shellcheck:
+    name: Shell Script Security Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Install ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+          
+      - name: Run ShellCheck
+        run: |
+          echo "Running ShellCheck on all shell scripts..."
+          find . -name "*.sh" -type f -exec shellcheck {} \;
+          
+  secret-scan:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Run TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          args: --only-verified --fail
+          
+  dependency-check:
+    name: Dependency Security Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Check for known vulnerabilities
+        run: |
+          echo "Checking for known security issues..."
+          # Check for common security patterns
+          if grep -r "password\|secret\|key\|token" . --exclude-dir=.git --exclude-dir=node_modules; then
+            echo "Warning: Potential secrets found in code"
+            exit 1
+          fi
+          
+  permission-check:
+    name: File Permission Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Check file permissions
+        run: |
+          echo "Checking file permissions..."
+          # Ensure shell scripts are executable
+          for file in *.sh; do
+            if [[ -f "$file" && ! -x "$file" ]]; then
+              echo "Error: $file is not executable"
+              exit 1
+            fi
+          done 
