@@ -135,7 +135,7 @@ check_system_health() {
     # Check CPU temperature (if sensors available)
     if command -v sensors >/dev/null 2>&1; then
         CPU_TEMP=$(sensors 2>/dev/null | grep "Core" | head -1 | awk '{print $3}' | sed 's/+//' | sed 's/°C//' || echo "")
-        if [[ -n "$CPU_TEMP" && "$CPU_TEMP" -gt 80 ]]; then
+        if [[ -n "$CPU_TEMP" && (( $(echo "$CPU_TEMP > 80" | bc -l 2>/dev/null || echo "0") )) ]]; then
             warn "High CPU temperature: ${CPU_TEMP}°C"
         elif [[ -n "$CPU_TEMP" ]]; then
             success "CPU temperature: ${CPU_TEMP}°C"
@@ -216,11 +216,23 @@ optimize_for_hardware() {
 find_cursor_appimage() {
     log "Finding Cursor AppImage..."
     
+    # First try the AppImage manager
+    if [[ -f "./cursor-appimage-manager.sh" ]]; then
+        local managed_appimage
+        managed_appimage=$(./cursor-appimage-manager.sh current 2>/dev/null | tail -1)
+        if [[ -n "$managed_appimage" && -f "$managed_appimage" ]]; then
+            log "Using managed AppImage: $managed_appimage"
+            echo "$managed_appimage"
+            return 0
+        fi
+    fi
+    
+    # Fallback to manual search
     local cursor_app=""
     local possible_paths=(
-        "$HOME/Downloads/Cursor-1.2.2-x86_64.AppImage.zs-old"
         "$HOME/Downloads/Cursor-1.2.2-x86_64.AppImage"
         "$HOME/Downloads/Cursor*.AppImage"
+        "$HOME/.local/share/cursor-appimages/current"
     )
     
     for path in "${possible_paths[@]}"; do
@@ -236,8 +248,9 @@ find_cursor_appimage() {
     fi
     
     if [[ -z "$cursor_app" ]]; then
-        error "Cursor AppImage not found in Downloads"
-        error "Please download Cursor AppImage to ~/Downloads/"
+        error "Cursor AppImage not found"
+        error "Run './cursor-appimage-manager.sh download' to download latest version"
+        error "Or place Cursor AppImage in ~/Downloads/"
         return 1
     fi
     
